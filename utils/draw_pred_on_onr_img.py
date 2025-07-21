@@ -75,13 +75,23 @@ def draw_predictions_on_image(
         )
         # 绘制经纬度
         if lonlat_str:
+            # 解析lon,lat字符串为float
+            try:
+                lon_val, lat_val = map(float, lonlat_str.split(','))
+                ns = 'N' if lat_val >= 0 else 'S'
+                ew = 'E' if lon_val >= 0 else 'W'
+                lat_fmt = f"{ns}:{abs(lat_val):.2f}"
+                lon_fmt = f"{ew}:{abs(lon_val):.2f}"
+                nswe_str = f"{lat_fmt} {lon_fmt}"
+            except Exception:
+                nswe_str = lonlat_str
             cv2.putText(
                 image,
-                lonlat_str,
+                nswe_str,
                 (x_min, y_min - 25),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
-                color,
+                (0, 0, 255),  # 蓝色
                 2,
             )
 
