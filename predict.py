@@ -134,7 +134,8 @@ def predict(
         iou_threshold=iou_threshold,
         confidence_threshold=confidence_threshold,
         area_weight=area_weight,
-        slice_sep=slice_sep
+        slice_sep=slice_sep,
+        orgimg_dir=images_dir,
     )
     for txt_regress_path in txt_regress_path_list:
         image_name = os.path.basename(txt_regress_path).split('.')[0]
@@ -149,7 +150,7 @@ def predict(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--images_dir", type=str, default=os.path.join(PROJECT_ROOT, 'images'))
+    parser.add_argument("--images_dir", type=str, default=os.path.join(PROJECT_ROOT, 'image'))
     parser.add_argument("--outdir_slice_ims", type=str, default=os.path.join(PROJECT_ROOT, 'dataset', 'predict', 'slice_images'))
     parser.add_argument("--project_name", type=str, default="FanPanel_detect")
     parser.add_argument("--im_ext", type=str, default=".tif")

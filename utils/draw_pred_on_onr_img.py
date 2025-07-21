@@ -6,6 +6,9 @@ sys.path.append(PROJECT_ROOT)
 sys.path.append(os.path.join(PROJECT_ROOT, "utils"))
 import rasterio
 
+def to_absolute(value, dim):
+    return round(value * dim) if value <= 1.0 else round(value)
+
 def draw_predictions_on_image(
     image_path, results_file_path, class_labels, class_names, completed_output_path
 ):
@@ -36,14 +39,20 @@ def draw_predictions_on_image(
     # 遍历每行结果
     for line in lines:
         line = line.strip().split(' ')
-        class_label, x, y, w, h, conf = map(float, line)
+        # 支持有经纬度的格式
+        if len(line) >= 8:
+            class_label, x, y, w, h, conf, lon, lat = map(float, line[:8])
+            lonlat_str = f"{lon:.2f},{lat:.2f}"
+        else:
+            class_label, x, y, w, h, conf = map(float, line[:6])
+            lonlat_str = ""
 
         # 计算边界框的坐标
         image_height, image_width, _ = image.shape
-        abs_x = int(x * image_width)
-        abs_y = int(y * image_height)
-        abs_w = int(w * image_width)
-        abs_h = int(h * image_height)
+        abs_x = to_absolute(x, image_width)
+        abs_y = to_absolute(y, image_height)
+        abs_w = to_absolute(w, image_width)
+        abs_h = to_absolute(h, image_height)
         x_min = abs_x - abs_w // 2
         y_min = abs_y - abs_h // 2
         x_max = abs_x + abs_w // 2
@@ -64,6 +73,17 @@ def draw_predictions_on_image(
             color,
             2,
         )
+        # 绘制经纬度
+        if lonlat_str:
+            cv2.putText(
+                image,
+                lonlat_str,
+                (x_min, y_min - 25),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                color,
+                2,
+            )
 
     # 保存绘制结果
     filename = os.path.basename(image_path)

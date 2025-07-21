@@ -22,6 +22,8 @@ def convert_coordinates(
     # orgimg_w = 0
     # orgimg_h = 0
     # 遍历文件夹中的每个 TXT 文件
+    # 格式为：类别、框的x中心点、框的y中心点、宽、高、置信度
+    # 名字格式：y、x、切片大小、原图大小
     for root, dirs, files in os.walk(txt_label_path):
         for index, filename in enumerate(files):
             if filename.endswith(".txt"):
@@ -77,7 +79,6 @@ def convert_coordinates(
                         float(lon),
                         float(lat)
                     ]
-
                     converted_lines.append(converted_line)
 
                 # 将转换后的结果添加到输出列表中

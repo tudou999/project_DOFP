@@ -106,57 +106,66 @@ def nms_per_class(
 
 
 def apply_nms(
-    outputs, iou_threshold, confidence_threshold, area_weight
-):
-    # 将边界框列表转换为NumPy数组
-    outputs = np.array(outputs)
+        outputs, iou_threshold, confidence_threshold, area_weight
+    ):
+        # 将边界框列表转换为NumPy数组
+        outputs = np.array(outputs)
 
-    boxes = []
-    scores = []
-    class_ids = []
-    for out in outputs:
-        x = out[1]
-        y = out[2]
-        w = out[3]
-        h = out[4]
-        score = out[5]
-        class_id = int(out[0])
-        orgimg_w = int(out[6])
-        orgimg_h = int(out[7])
+        boxes = []
+        scores = []
+        class_ids = []
+        extra_params = []  # 用于保留第七、第八个参数
+        for out in outputs:
+            x = out[1]
+            y = out[2]
+            w = out[3]
+            h = out[4]
+            score = out[5]
+            class_id = int(out[0])
+            # 保留第七、第八个参数（假设为out[6], out[7]，如有更多可扩展）
+            extra = out[6:8] if out.shape[0] > 7 else []
 
-        # 计算边界
-        left = float(x - w / 2)
-        top = float(y - h / 2)
-        right = float(x + w / 2)
-        bottom = float(y + h / 2)
+            # 计算边界
+            left = float(x - w / 2)
+            top = float(y - h / 2)
+            right = float(x + w / 2)
+            bottom = float(y + h / 2)
+            print(f"Calculated box: left={left}, top={top}, right={right}, bottom={bottom}")
 
-        # Add the class ID, score, and box coordinates to the respective lists
-        class_ids.append(class_id)
-        scores.append(score)
-        boxes.append([left, top, right, bottom])
+            # Add the class ID, score, and box coordinates to the respective lists
+            class_ids.append(class_id)
+            scores.append(score)
+            boxes.append([left, top, right, bottom])
+            extra_params.append(extra)
 
-    # 应用NMS
-    # indices = cv2.dnn.NMSBoxes(boxes, scores, score_threshold, nms_threshold)
-    indices = nms_per_class(
-        boxes=boxes,
-        scores=scores,
-        classes=class_ids,
-        iou_threshold=iou_threshold,
-        confidence_threshold=confidence_threshold,
-        area_weight=area_weight,
-    )
+        # 应用NMS
+        indices = nms_per_class(
+            boxes=boxes,
+            scores=scores,
+            classes=class_ids,
+            iou_threshold=iou_threshold,
+            confidence_threshold=confidence_threshold,
+            area_weight=area_weight,
+        )
 
-    # 选择通过NMS过滤后的边界框
-    nms_out_lines = []
-    for i in indices:
-        # Get the box, score, and class ID corresponding to the index
-        box = boxes[i]
-        score = scores[i]
-        class_id = class_ids[i]
-        x = float(box[0] + (box[2] - box[0]) / 2) / orgimg_w
-        y = float(box[1] + (box[2] - box[0]) / 2) / orgimg_h
-        w = float(box[2] - box[0]) / orgimg_w
-        h = float(box[3] - box[1]) / orgimg_h
-        nms_out_line = f"{class_id} {x} {y} {w} {h} {score}\n"
-        nms_out_lines.append(nms_out_line)
-    return nms_out_lines
+        # 选择通过NMS过滤后的边界框
+        nms_out_lines = []
+        for i in indices:
+            # Get the box, score, class ID, and extra params corresponding to the index
+            box = boxes[i]
+            score = scores[i]
+            class_id = class_ids[i]
+            extra = extra_params[i]
+            x = float(box[0] + (box[2] - box[0]) / 2)
+            y = float(box[1] + (box[3] - box[1]) / 2)
+            w = float(box[2] - box[0])
+            h = float(box[3] - box[1])
+            # 拼接额外参数
+            extra_str = " ".join(str(e) for e in extra) if len(extra) > 0 else ""
+            nms_out_line = f"{class_id} {x} {y} {w} {h} {score}"
+            if extra_str:
+                nms_out_line += f" {extra_str}"
+            nms_out_line += "\n"
+            nms_out_lines.append(nms_out_line)
+            print(nms_out_line)
+        return nms_out_lines
