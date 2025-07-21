@@ -6,10 +6,11 @@ sys.path.append(PROJECT_ROOT)
 sys.path.append(os.path.join(PROJECT_ROOT, "utils"))
 
 from utils.n_cls_nms_plus import apply_nms
+import rasterio
 
 
 def convert_coordinates(
-    txt_label_path, output_file_dir, iou_threshold, confidence_threshold, area_weight, slice_sep
+    txt_label_path, output_file_dir, iou_threshold, confidence_threshold, area_weight, slice_sep, orgimg_dir
 ):
     # txt_file_path: 存放 YOLOv8 小图检测结果的 TXT 文件的上级路径
     # output_file_path: 变换后的结果存放的 TXT 文件路径
@@ -53,17 +54,19 @@ def convert_coordinates(
                     w = float(w) * sliceWidth
                     h = float(h) * sliceHeight
 
-                    # # 未归一化，因为后文需要
-                    # x_in_original = (float(x) + x0) / orgimg_w
-                    # y_in_original = (float(y) + y0) / orgimg_h
-                    # w_in_original = float(w) / orgimg_w
-                    # h_in_original = float(h) / orgimg_h
-                    # converted_line = f"{class_label} {x_in_original} {y_in_original} {w_in_original} {h_in_original} {conf}\n"
-
                     x_in_original = float(x) + x0
                     y_in_original = float(y) + y0
                     w_in_original = float(w)
                     h_in_original = float(h)
+
+                    # 计算中心点经纬度
+                    tif_path = os.path.join(orgimg_dir, imgname + ".tif")
+                    if os.path.exists(tif_path):
+                        with rasterio.open(tif_path) as src:
+                            lon, lat = src.transform * (x_in_original, y_in_original)
+                    else:
+                        lon, lat = 0.0, 0.0  # 若找不到tif，填0
+
                     converted_line = [
                         int(class_label),
                         x_in_original,
@@ -71,8 +74,8 @@ def convert_coordinates(
                         w_in_original,
                         h_in_original,
                         float(conf),
-                        orgimg_w,
-                        orgimg_h
+                        float(lon),
+                        float(lat)
                     ]
 
                     converted_lines.append(converted_line)
@@ -104,7 +107,12 @@ def convert_coordinates(
             logging.warning(f"completed predict txt results of image—{key} have been existed! The original content will be overwritten!")
 
         with open(output_file_path, "w") as f:
-            f.writelines(nms_output_lines)
+            for line in nms_output_lines:
+                # line: [class, x, y, w, h, conf, lon, lat]
+                if isinstance(line, (list, tuple)) and len(line) >= 8:
+                    f.write(f"{line[0]} {line[1]:.2f} {line[2]:.2f} {line[3]:.2f} {line[4]:.2f} {line[5]:.2f} {line[6]:.2f} {line[7]:.2f}\n")
+                else:
+                    f.write(str(line))
         print(f"completed predict txt results of image—{key} is saved at: {output_file_path}")
         outputs_file_path_list.append(output_file_path)
 

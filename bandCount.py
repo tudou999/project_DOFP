@@ -1,7 +1,6 @@
-import rasterio
+import os
 
-# 打开 TIFF 文件
-with rasterio.open('/root/autodl-tmp/new/111.tif') as src:
-    # 获取波段数量
-    band_count = src.count
-    print(f"图像包含 {band_count} 个波段")
+PROJECT_ROOT = os.path.abspath(os.path.join(os.getcwd(), "."))
+images_dir = os.path.join(PROJECT_ROOT, "images"),
+
+print(f"Images directory: {images_dir}")

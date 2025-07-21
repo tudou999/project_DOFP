@@ -12,9 +12,9 @@ import rasterio
 
 def predict(
     # clip args
-    images_dir=os.path.join(PROJECT_ROOT),
+    images_dir=os.path.join(PROJECT_ROOT, "images"),
     outdir_slice_ims=os.path.join(PROJECT_ROOT, 'output'),
-    project_name="sersor_detect",
+    project_name="Fan",
     im_ext=".tif",
     sliceHeight=1088,
     sliceWidth=1088,
@@ -149,9 +149,9 @@ def predict(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--images_dir", type=str, default=os.path.join(PROJECT_ROOT))
+    parser.add_argument("--images_dir", type=str, default=os.path.join(PROJECT_ROOT, 'images'))
     parser.add_argument("--outdir_slice_ims", type=str, default=os.path.join(PROJECT_ROOT, 'dataset', 'predict', 'slice_images'))
-    parser.add_argument("--project_name", type=str, default="sensor_detect")
+    parser.add_argument("--project_name", type=str, default="FanPanel_detect")
     parser.add_argument("--im_ext", type=str, default=".tif")
     parser.add_argument("--sliceHeight", type=int, default=1088)
     parser.add_argument("--sliceWidth", type=int, default=1088)
@@ -184,14 +184,9 @@ if __name__ == '__main__':
     parser.add_argument("--iou_threshold", type=float, default=0.01)
     parser.add_argument("--confidence_threshold", type=float, default=0.5)
     parser.add_argument("--area_weight", type=float, default=5)
-    parser.add_argument("--class_labels", type=int, nargs="+", default=[0, 1, 2, 3, 4, 5])
+    parser.add_argument("--class_labels", type=int, nargs="+", default=[0])
     parser.add_argument("--class_names", type=str, nargs="+", default=[
-            "head",
-            "boxholder",
-            "greendevice",
-            "baseholer",
-            "circledevice",
-            "alldrop",
+            "Fan",
         ])
     parser.add_argument("--completed_output_path", type=str, default=os.path.join(PROJECT_ROOT, 'results', 'completed_predict'))
 

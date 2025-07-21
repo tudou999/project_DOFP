@@ -36,6 +36,6 @@ def compare_geoinfo(tif1_path, tif2_path):
             print("❌ 地理坐标信息不一致。")
 
 # 示例调用
-tif1 = '/root/autodl-tmp/new/111.tif'
-tif2 = '/root/autodl-tmp/new/results/completed_predict/sensor_detect/111.tif'
+tif1 = './images/111.tif'
+tif2 = './results/completed_predict/FanPanel_detect/111.tif'
 compare_geoinfo(tif1, tif2)

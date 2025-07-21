@@ -8,12 +8,11 @@
 conda create -n DOFP python=3.9 -y
 conda activate DOFP
 # 安装依赖
-pip install ultralytics, rasterio
-pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
+pip install ultralytics rasterio
 ```
 
 ### gdal库配置
-**注**：gdal库的配置比较麻烦，优先使用第一种conda方法安装；如果第一种等待时间过长，使用第二种pip方法安装（本地whl包已包含在项目根目录下）。
+**注**：优先使用第一种conda方法安装；如果等待时间过长，使用pip方法安装（本地whl包已包含在项目根目录下）。
 
 1. 使用conda方法
 ```bash
@@ -30,15 +29,19 @@ pip install ./GDAL-3.4.1-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl
 
 ## Usage
 
-本项目支持命令行参数，可通过设置命令行参数进行模型推理，请在yoltv8\predict.py下运行，相关命令行参数如下：
+### 注意
+可以直接将图片放在项目根目录下的`images`文件夹中。
+
+### 命令行
+本项目支持命令行参数，可通过设置命令行参数进行模型推理，请在`predict.py`下运行，相关命令行参数如下：
 
 ```shell
-[--images_dir IMAGES_DIR] # 所存放照片的文件夹路径， 默认为：yoltv8\dataset\predict\init_images\项目名称
-[--outdir_slice_ims OUTDIR_SLICE_IMS] # 图像分割结果路径，无需设置，会自动生成，默认为：yoltv8\dataset\predict\slice_images\项目名称
+[--images_dir IMAGES_DIR] # 所存放照片的文件夹路径， 默认为：FanPanel_detect/images
+[--outdir_slice_ims OUTDIR_SLICE_IMS] # 图像分割结果路径，无需设置，会自动生成，默认为：FanPanel_detect/dataset/predict/slice_images/Fan
 [--project_name PROJECT_NAME]
 # 一次推理任务的项目名称，推理结果的ID,不同任务请不用重复，否则会覆盖结果。
-# yolov8原始模型预测结果路径：yoltv8\results\yolov8_detect\项目名称， 自动生成，无需修改
-[--im_ext IM_EXT] # 推理文件的后缀名称，如.jpg
+# yolov8原始模型预测结果路径：./results/yolov8_detect/项目名称， 自动生成，无需修改
+[--im_ext IM_EXT] # 推理文件的后缀名称，如.tif
 [--sliceHeight SLICEHEIGHT] # 图像裁剪高度， 默认1088， 根据具体情况更改
 [--sliceWidth SLICEWIDTH] # 图像裁剪宽度. 默认1088
 [--overlap OVERLAP] # 图像裁剪重复率，默认0.5，太小会出现无法捕获大型目标的完整检测框
@@ -77,78 +80,21 @@ pip install ./GDAL-3.4.1-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl
 
 本次任务一般仅需要修改以下参数（其他参数可保持默认，请根据实际情况进行设置）：
 
-1. images_dir参数，指定你所存放照片的文件夹路径（注意照片路径，而是存在照片的上级文件夹路径，路径及照片名称中不可出现中文汉字），
+1. `images_dir`参数，指定你所存放照片的文件夹路径（注意照片路径，而是存在照片的上级文件夹路径，路径及照片名称中不可出现中文汉字），
 
-   如：--image_dir E:\yoltv8\dataset\predict\init_images, 可将推理照片存放在默认dataset\predict\init_images路径下。
+   如：--image_dir ./images, 可将推理照片存放在默认`images`路径下。
 
-2. im_ext参数，你所需要进行推理的照片格式，如.jpg、.png等（无需区分大小写，但要注意不要遗忘了    **.**    ）。推理时，只会对images_dir下的以im_ext为后缀名的文件进行推理。
+2. `im_ext`参数，你所需要进行推理的照片格式，如.jpg、.png等（无需区分大小写，但要注意不要遗忘了    **.**    ）。推理时，只会对images_dir下的以im_ext为后缀名的文件进行推理。
 
-3. model参数，指定模型结果文件的路径，如 --model E:\yoltv8\checkpoint\best.pt，除pt文件外，也支持onnx文件、engine文件等yolov8等官方支持的模型结果文件格式。
+3. `model`参数，指定模型结果文件的路径，如 --model ./yoloFan.pt，除pt文件外，也支持onnx文件、engine文件等yolov8等官方支持的模型结果文件格式。
 
 命令行启动示例：
 
 ```
-   python predict.py --images_dir E:\yoltv8\dataset\predict\init_images --im_ext .jpg --model E:\yoltv8\checkpoint\best.pt
+   python predict.py --images_dir ./images --im_ext .tif --model ./yoloFan.pt
 ```
 
-   
+本项目还可直接修改`predict.py`文件中的命令函参数设置部分，这样就无需再命令行中进行修改,，修改参数信息后直接启动predict.py即可。各参数信息和前文一样。
 
-本项目还可直接修改predict.py文件中的命令函参数设置部分，这样就无需再命令行中进行修改,，修改参数信息后直接启动predict.py即可。各参数信息和前文一样。
-
-```python
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--images_dir", type=str, default=os.path.join(PROJECT_ROOT, 'dataset', 'predict', 'init_images'))
-    parser.add_argument("--outdir_slice_ims", type=str, default=os.path.join(PROJECT_ROOT, 'dataset', 'predict', 'slice_images'))
-    parser.add_argument("--project_name", type=str, default="sensor_detect")
-    parser.add_argument("--im_ext", type=str, default=".jpg")
-    parser.add_argument("--sliceHeight", type=int, default=1088)
-    parser.add_argument("--sliceWidth", type=int, default=1088)
-    parser.add_argument("--overlap", type=float, default=0.5)
-    parser.add_argument("--slice_sep", type=str, default="_")
-    parser.add_argument("--overwrite", type=bool, default=False)
-    parser.add_argument("--out_ext", type=str, default=".png")
-    parser.add_argument("--model", type=str, default=r"E:\yoltv8\checkpoint\best.pt")
-    parser.add_argument("--conf", type=float, default=0.25)  # object confidence threshold for detection
-    parser.add_argument("--iou", type=float, default=0.7)  # intersection over union (IoU) threshold for NMS
-    parser.add_argument("--half", type=bool, default=False)  # use FP16 half-precision inference
-    parser.add_argument("--device", type=str, default=None)  # cuda device, i.e. 0 or 0,1,2,3 or
-    parser.add_argument("--show", type=bool, default=False)  # show results
-    parser.add_argument("--save", type=bool, default=True)  # save images with results
-    parser.add_argument("--save_txt", type=bool, default=True)  # save results"
-    parser.add_argument("--save_conf", type=bool, default=True)
-    parser.add_argument("--save_crop", type=bool, default=False)  # save cropped prediction boxes
-    parser.add_argument("--hide_labels", type=bool, default=False)  # hide labels
-    parser.add_argument("--hide_conf", type=bool, default=False)
-    parser.add_argument("--max_det", type=int, default=300)  # maximum detections per image
-    parser.add_argument("--vid_stride", type=bool, default=False)  # video frame-rate stride
-    parser.add_argument("--line_width", type=float, default=None)
-    parser.add_argument("--visualize", type=bool, default=False)
-    parser.add_argument("--augment", type=bool, default=False)
-    parser.add_argument("--agnostic_nms", type=bool, default=False)
-    parser.add_argument("--retina_masks", type=bool, default=False)
-    parser.add_argument("--classes", type=int, nargs="+", default=None)
-    parser.add_argument("--boxes", type=bool, default=True)
-    parser.add_argument("--output_file_dir", type=str, default=os.path.join(PROJECT_ROOT, 'results', 'completed_txt'))
-    parser.add_argument("--iou_threshold", type=float, default=0.01)
-    parser.add_argument("--confidence_threshold", type=float, default=0.5)
-    parser.add_argument("--area_weight", type=float, default=5)
-    parser.add_argument("--class_labels", type=int, nargs="+", default=[0, 1, 2, 3, 4, 5])
-    parser.add_argument("--class_names", type=str, nargs="+", default=[
-            "head",
-            "boxholder",
-            "greendevice",
-            "baseholer",
-            "circledevice",
-            "alldrop",
-        ])
-    parser.add_argument("--completed_output_path", type=str, default=os.path.join(PROJECT_ROOT, 'results', 'completed_predict'))
-```
-
-结果路径示例展示（sensor_detect为本次推理的项目名称）：
-
-![image-20230628155620268](https://github.com/ABCnutter/YOLTV8/assets/91233657/301996a5-80f4-4d70-b63a-bf0b91a0280c)
-
-**注**：多尺度，多信息的预处理模块还未上传，但不影响正常使用，可先增大裁剪尺寸以及重叠率来避免超大物体（无法在单幅影像块中完整给出的物体）的识别不完整。
-
-
-
+结果路径示例展示（FanPanel_detect为本次推理的项目名称）：
+![image-example](./assets/img.png)
