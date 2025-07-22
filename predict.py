@@ -1,14 +1,14 @@
 import os
 import sys
 import argparse
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.getcwd(), "."))
 sys.path.append(PROJECT_ROOT)
 sys.path.append(os.path.join(PROJECT_ROOT, "utils"))
-from utils.slice_images import slice_image
-from utils.convert_coordinates import convert_coordinates
-from utils.draw_pred_on_onr_img import draw_predictions_on_image
-from osgeo import gdal
-import rasterio
+from utils import slice_image
+from utils import convert_coordinates
+from utils import draw_predictions_on_image
+from utils import get_yolo_style_dir
 
 def predict(
     # clip args
@@ -16,8 +16,8 @@ def predict(
     outdir_slice_ims=os.path.join(PROJECT_ROOT, 'output'),
     project_name="Fan",
     im_ext=".tif",
-    sliceHeight=1088,
-    sliceWidth=1088,
+    sliceHeight=1024,
+    sliceWidth=1024,
     overlap=0.6,
     slice_sep='_',
     overwrite=False,
@@ -45,14 +45,14 @@ def predict(
     classes=None,  # filter results by class, i.e. class=0, or class=[0,2,3]
     boxes=True,  # Show boxes in segmentation predictions
     # regress args
-    output_file_dir=os.path.join(PROJECT_ROOT, 'results', 'completed_txt'),
+    output_file_dir=get_yolo_style_dir(os.path.join(PROJECT_ROOT, 'runs'), task='txt'),
     iou_threshold=0.01,
     confidence_threshold=0.6,
     area_weight=5,
     # draw args
     class_labels=[0],
     class_names=["Fan",],
-    completed_output_path=os.path.join(PROJECT_ROOT, 'results', 'completed_predict')
+    completed_output_path=get_yolo_style_dir(os.path.join(PROJECT_ROOT, 'runs'), task='predict'),
 ):
     im_list = [z for z in os.listdir(images_dir) if z.lower().endswith(im_ext.lower())]
 
@@ -62,7 +62,7 @@ def predict(
         import shutil
         shutil.rmtree(os.path.join(outdir_slice_ims, project_name))
         os.makedirs(os.path.join(outdir_slice_ims, project_name))
-        print(f"{os.path.join(outdir_slice_ims, project_name)} is existed! The original content will be overwritten!!")
+        print(f"{os.path.join(outdir_slice_ims, project_name)} 已存在，原有内容将被覆盖！")
 
         # slice images
     for i, im_name in enumerate(im_list):
@@ -87,7 +87,7 @@ def predict(
         import shutil
         import logging
         shutil.rmtree(yolov8_predict_results_path)
-        logging.warning(f"detect predict path: {yolov8_predict_results_path} is existed! The original content will be overwritten!")
+        logging.warning(f"检测结果路径: {yolov8_predict_results_path} 已存在，原有内容将被覆盖！")
         
     predict_shell = (
         'yolo predict model={} source={} project={} name={} conf={} iou={} half={} device={} show={} ' \
@@ -121,7 +121,7 @@ def predict(
         )
     )
     print('\n')
-    print(f"predict shell: {predict_shell}")
+    print(f"预测命令: {predict_shell}")
     print('\n')
 
     os.system(predict_shell)

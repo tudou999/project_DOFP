@@ -15,7 +15,7 @@ def draw_predictions_on_image(
     # 确保类别标签和类别名称数量一致
     assert len(class_labels) == len(
         class_names
-    ), "Number of class labels should match the number of class names."
+    ), "类别标签数量应与类别名称数量一致。"
 
     # 定义类别对应的颜色
     colors = [
@@ -104,7 +104,7 @@ def draw_predictions_on_image(
     if os.path.exists(output_image_path):
         import logging
         os.remove(output_image_path)
-        logging.warning(f"completed predict visual result of image-{filename} have been existed! The original content will be overwritten!")
+        logging.warning(f"图片 {filename} 的预测可视化结果已存在，原内容将被覆盖！")
 
     with rasterio.open(image_path) as src:
         profile = src.profile
@@ -120,15 +120,4 @@ def draw_predictions_on_image(
     with rasterio.open(output_image_path, 'w', **profile) as dst:
         dst.write(image_to_save)
 
-    print(f"completed predict visual result of image-{filename} is saved at: {output_image_path}")
-
-
-# def generate_color_map(num_classes):
-#     # 生成一组固定的颜色，确保同一类别使用相同的颜色, 颜色版通用函数
-#     random.seed(42)
-#     colors = []
-#     for _ in range(num_classes):
-#         color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-#         colors.append(color)
-
-#     return colors
+    print(f"图片 {filename} 的预测可视化结果已保存至: {output_image_path}")

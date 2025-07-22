@@ -5,9 +5,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.getcwd(), "."))
 sys.path.append(PROJECT_ROOT)
 sys.path.append(os.path.join(PROJECT_ROOT, "utils"))
 
-from utils.n_cls_nms_plus import apply_nms
+from .nms import apply_nms
 import rasterio
-
 
 def convert_coordinates(
     txt_label_path, output_file_dir, iou_threshold, confidence_threshold, area_weight, slice_sep, orgimg_dir
@@ -16,7 +15,7 @@ def convert_coordinates(
     # output_file_path: 变换后的结果存放的 TXT 文件路径
     if not os.path.exists(output_file_dir):
         os.makedirs(output_file_dir)
-        print(f"Created folder {output_file_dir}")
+        print(f"已创建文件夹 {output_file_dir}")
     output_lines = dict()  # 存储转换后的结果
 
     # orgimg_w = 0
@@ -105,7 +104,7 @@ def convert_coordinates(
             # import shutil
             import logging
             os.remove(output_file_path)
-            logging.warning(f"completed predict txt results of image—{key} have been existed! The original content will be overwritten!")
+            logging.warning(f"图片 {key} 的预测txt结果已存在，原内容将被覆盖！")
 
         with open(output_file_path, "w") as f:
             for line in nms_output_lines:
@@ -114,7 +113,7 @@ def convert_coordinates(
                     f.write(f"{line[0]} {line[1]:.2f} {line[2]:.2f} {line[3]:.2f} {line[4]:.2f} {line[5]:.2f} {line[6]:.2f} {line[7]:.2f}\n")
                 else:
                     f.write(str(line))
-        print(f"completed predict txt results of image—{key} is saved at: {output_file_path}")
+        print(f"图片 {key} 的预测txt结果已保存至: {output_file_path}")
         outputs_file_path_list.append(output_file_path)
 
     return outputs_file_path_list

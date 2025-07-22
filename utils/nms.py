@@ -6,7 +6,6 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.getcwd(), "."))
 sys.path.append(PROJECT_ROOT)
 sys.path.append(os.path.join(PROJECT_ROOT, "utils"))
 
-
 def calculate_area(box):
     """
     计算边界框的面积
@@ -15,7 +14,6 @@ def calculate_area(box):
     x1, y1, x2, y2 = box
     area = (x2 - x1) * (y2 - y1)
     return area
-
 
 def calculate_iou(box1, box2):
     """
@@ -130,7 +128,7 @@ def apply_nms(
             top = float(y - h / 2)
             right = float(x + w / 2)
             bottom = float(y + h / 2)
-            print(f"Calculated box: left={left}, top={top}, right={right}, bottom={bottom}")
+            print(f"计算得到的边界框: left={left}, top={top}, right={right}, bottom={bottom}")
 
             # Add the class ID, score, and box coordinates to the respective lists
             class_ids.append(class_id)
@@ -167,5 +165,4 @@ def apply_nms(
                 nms_out_line += f" {extra_str}"
             nms_out_line += "\n"
             nms_out_lines.append(nms_out_line)
-            print(nms_out_line)
         return nms_out_lines
