@@ -110,7 +110,7 @@ def convert_coordinates(
             for line in nms_output_lines:
                 # line: [class, x, y, w, h, conf, lon, lat]
                 if isinstance(line, (list, tuple)) and len(line) >= 8:
-                    f.write(f"{line[0]} {line[1]:.2f} {line[2]:.2f} {line[3]:.2f} {line[4]:.2f} {line[5]:.2f} {line[6]:.2f} {line[7]:.2f}\n")
+                    f.write(f"{line[0]} {line[1]:.2f} {line[2]:.2f} {line[3]:.2f} {line[4]:.2f} {line[5]:.2f} {line[6]:.4f} {line[7]:.4f}\n")
                 else:
                     f.write(str(line))
         print(f"图片 {key} 的预测txt结果已保存至: {output_file_path}")

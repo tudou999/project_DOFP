@@ -42,7 +42,7 @@ def draw_predictions_on_image(
         # 支持有经纬度的格式
         if len(line) >= 8:
             class_label, x, y, w, h, conf, lon, lat = map(float, line[:8])
-            lonlat_str = f"{lon:.2f},{lat:.2f}"
+            lonlat_str = f"{lon:.4f},{lat:.4f}"
         else:
             class_label, x, y, w, h, conf = map(float, line[:6])
             lonlat_str = ""
@@ -80,8 +80,8 @@ def draw_predictions_on_image(
                 lon_val, lat_val = map(float, lonlat_str.split(','))
                 ns = 'N' if lat_val >= 0 else 'S'
                 ew = 'E' if lon_val >= 0 else 'W'
-                lat_fmt = f"{ns}:{abs(lat_val):.2f}"
-                lon_fmt = f"{ew}:{abs(lon_val):.2f}"
+                lat_fmt = f"{ns}:{abs(lat_val):.4f}"
+                lon_fmt = f"{ew}:{abs(lon_val):.4f}"
                 nswe_str = f"{lat_fmt} {lon_fmt}"
             except Exception:
                 nswe_str = lonlat_str

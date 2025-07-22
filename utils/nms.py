@@ -128,7 +128,6 @@ def apply_nms(
             top = float(y - h / 2)
             right = float(x + w / 2)
             bottom = float(y + h / 2)
-            print(f"计算得到的边界框: left={left}, top={top}, right={right}, bottom={bottom}")
 
             # Add the class ID, score, and box coordinates to the respective lists
             class_ids.append(class_id)

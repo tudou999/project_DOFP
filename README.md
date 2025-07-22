@@ -65,4 +65,9 @@ python predict.py --images_dir ./images --im_ext .tif --model ./yoloFan.pt
 
 ## 输出结果示例：
 ![image-example](./assets/img.png)
+
 说明：
+- 输出最后保存在根目录的`runs/exp`文件夹下，`exp`后面的数字为检测时的时间戳。
+- `predict`文件夹存储的是带目标检测框以及坐标的`tif`文件。
+- `txt`文件夹存储的是`predict`文件夹中`tif`文件的检测数据（包含经纬度）。
+- `window`文件夹存储的是分割后进行检测的图像，并且包含每张图像的`label`文件。
