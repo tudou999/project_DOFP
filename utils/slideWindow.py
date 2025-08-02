@@ -4,7 +4,6 @@ import time
 
 def slice_image(
     image_path,
-    preject_name,
     out_dir_all_images,
     sliceHeight=416,
     sliceWidth=416,
@@ -28,7 +27,7 @@ def slice_image(
     dx = int((1.0 - overlap) * sliceWidth)
     dy = int((1.0 - overlap) * sliceHeight)
 
-    out_dir_image = os.path.join(out_dir_all_images, preject_name)
+    out_dir_image = out_dir_all_images
 
     n_ims = 0
     for y0 in range(0, image.shape[0], dy):

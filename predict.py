@@ -3,19 +3,25 @@ import sys
 import argparse
 import datetime
 
+# 设置项目根目录
 PROJECT_ROOT = os.path.abspath(os.path.join(os.getcwd(), "."))
 sys.path.append(PROJECT_ROOT)
 sys.path.append(os.path.join(PROJECT_ROOT, "utils"))
-from utils import slice_image, convert_coordinates, draw_predictions_on_image
 
-def get_exp_dir(base_dir):
+# 滑动窗口公用
+from utils import slice_image
+# 预测用函数
+from utils import convert_coordinates, draw_predictions_on_image
+# 分割用函数
+from utils import convert_coordinates_seg, draw_segs_on_image
+
+def get_exp_dir(base_dir, task):
     now = datetime.datetime.now().strftime('%Y%m%d_%H%M')
     exp_dir = f"exp{now}"
-    return os.path.join(base_dir, exp_dir)
+    return os.path.join(base_dir, task, exp_dir)
 
 def predict(
     images_dir=os.path.join(PROJECT_ROOT, "images"),
-    project_name="Fan",
     im_ext=".tif",
     sliceHeight=1024,
     sliceWidth=1024,
@@ -49,29 +55,29 @@ def predict(
     area_weight=5,
     class_labels=[0],
     class_names=["Fan",],
+    task='det',
 ):
     # 统一时间戳目录
-    exp_dir = get_exp_dir(os.path.join(PROJECT_ROOT, 'runs'))
+    exp_dir = get_exp_dir(os.path.join(PROJECT_ROOT, 'runs'), task)
     outdir_slice_ims = os.path.join(exp_dir, 'window')
     output_file_dir = os.path.join(exp_dir, 'txt')
     completed_output_path = os.path.join(exp_dir, 'predict')
 
     im_list = [z for z in os.listdir(images_dir) if z.lower().endswith(im_ext.lower())]
 
-    if not os.path.exists(os.path.join(outdir_slice_ims, project_name)):
-        os.makedirs(os.path.join(outdir_slice_ims, project_name))
+    if not os.path.exists(outdir_slice_ims):
+        os.makedirs(outdir_slice_ims)
     else:
         import shutil
-        shutil.rmtree(os.path.join(outdir_slice_ims, project_name))
-        os.makedirs(os.path.join(outdir_slice_ims, project_name))
-        print(f"{os.path.join(outdir_slice_ims, project_name)} 已存在，原有内容将被覆盖！")
+        shutil.rmtree(outdir_slice_ims)
+        os.makedirs(outdir_slice_ims)
+        print(f"{outdir_slice_ims} 已存在，原有内容将被覆盖！")
 
     for i, im_name in enumerate(im_list):
         im_path = os.path.join(images_dir, im_name)
         print("=========================== ", im_name, "--", i + 1, "/", len(im_list), " =========================== ")
         slice_image(
             im_path,
-            project_name,
             outdir_slice_ims,
             sliceHeight=sliceHeight,
             sliceWidth=sliceWidth,
@@ -81,7 +87,7 @@ def predict(
             out_ext=out_ext,
         )
 
-    yolov8_predict_results_path = os.path.join(PROJECT_ROOT, 'results', 'yolov8_detect', project_name)
+    yolov8_predict_results_path = os.path.join(PROJECT_ROOT, 'results', 'yolov8_detect')
 
     if os.path.exists(yolov8_predict_results_path):
         import shutil
@@ -90,14 +96,13 @@ def predict(
         logging.warning(f"检测结果路径: {yolov8_predict_results_path} 已存在，原有内容将被覆盖！")
 
     predict_shell = (
-        'yolo predict model={} source={} project={} name={} conf={} iou={} half={} device={} show={} '
+        'yolo predict model={} source={} project={} conf={} iou={} half={} device={} show={} '
         'save={} save_txt={} save_conf={} save_crop={} hide_labels={} hide_conf={} '
         'max_det={} vid_stride={} line_width={} visualize={} augment={} agnostic_nms={} '
         'retina_masks={} classes={} boxes={}'.format(
             model,
-            os.path.join(outdir_slice_ims, project_name),
+            outdir_slice_ims,
             f'results/yolov8_detect',
-            project_name,
             conf,
             iou,
             half,
@@ -130,7 +135,7 @@ def predict(
 
     txt_regress_path_list = convert_coordinates(
         txt_label_path=txt_label_path,
-        output_file_dir=os.path.join(output_file_dir, project_name),
+        output_file_dir=output_file_dir,
         iou_threshold=iou_threshold,
         confidence_threshold=confidence_threshold,
         area_weight=area_weight,
@@ -145,13 +150,12 @@ def predict(
             results_file_path=txt_regress_path,
             class_labels=class_labels,
             class_names=class_names,
-            completed_output_path=os.path.join(completed_output_path, project_name),
+            completed_output_path=completed_output_path,
         )
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--images_dir", type=str, default=os.path.join(PROJECT_ROOT, 'images'))
-    parser.add_argument("--project_name", type=str, default="FanPanel_detect")
     parser.add_argument("--im_ext", type=str, default=".tif")
     parser.add_argument("--sliceHeight", type=int, default=1088)
     parser.add_argument("--sliceWidth", type=int, default=1088)

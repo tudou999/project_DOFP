@@ -117,3 +117,8 @@ def convert_coordinates(
         outputs_file_path_list.append(output_file_path)
 
     return outputs_file_path_list
+
+def convert_coordinates_seg(
+    txt_label_path, output_file_dir, iou_threshold, confidence_threshold, area_weight, slice_sep, orgimg_dir
+):
+    pass

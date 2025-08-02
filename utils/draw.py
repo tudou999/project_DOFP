@@ -121,3 +121,8 @@ def draw_predictions_on_image(
         dst.write(image_to_save)
 
     print(f"图片 {filename} 的预测可视化结果已保存至: {output_image_path}")
+
+def draw_segs_on_image(
+    image_path, results_file_path, class_labels, class_names, completed_output_path
+):
+    pass
