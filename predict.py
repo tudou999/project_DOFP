@@ -57,6 +57,13 @@ def predict(
     class_names=["Fan",],
     task='det',
 ):
+    if task == 'det':
+        model = "yoloFan.pt"
+        class_names=["Fan"]
+    elif task == 'seg':
+        model = "yoloPanel.pt"
+        class_names=["Panel"]
+
     # 统一时间戳目录
     exp_dir = get_exp_dir(os.path.join(PROJECT_ROOT, 'runs'), task)
     outdir_slice_ims = os.path.join(exp_dir, 'window')
@@ -75,7 +82,8 @@ def predict(
 
     for i, im_name in enumerate(im_list):
         im_path = os.path.join(images_dir, im_name)
-        print("=========================== ", im_name, "--", i + 1, "/", len(im_list), " =========================== ")
+        print("=========================== ", im_name, "--", i + 1, "/", len(im_list),
+              " =========================== ")
         slice_image(
             im_path,
             outdir_slice_ims,
@@ -133,25 +141,48 @@ def predict(
 
     txt_label_path = os.path.join(yolov8_predict_results_path, 'labels')
 
-    txt_regress_path_list = convert_coordinates(
-        txt_label_path=txt_label_path,
-        output_file_dir=output_file_dir,
-        iou_threshold=iou_threshold,
-        confidence_threshold=confidence_threshold,
-        area_weight=area_weight,
-        slice_sep=slice_sep,
-        orgimg_dir=images_dir,
-    )
-    for txt_regress_path in txt_regress_path_list:
-        image_name = os.path.basename(txt_regress_path).split('.')[0]
-        image_path = os.path.join(images_dir, image_name + im_ext)
-        draw_predictions_on_image(
-            image_path=image_path,
-            results_file_path=txt_regress_path,
-            class_labels=class_labels,
-            class_names=class_names,
-            completed_output_path=completed_output_path,
+    # 检测任务
+    if task == 'det':
+        txt_regress_path_list = convert_coordinates(
+            txt_label_path=txt_label_path,
+            output_file_dir=output_file_dir,
+            iou_threshold=iou_threshold,
+            confidence_threshold=confidence_threshold,
+            area_weight=area_weight,
+            slice_sep=slice_sep,
+            orgimg_dir=images_dir,
         )
+        for txt_regress_path in txt_regress_path_list:
+            image_name = os.path.basename(txt_regress_path).split('.')[0]
+            image_path = os.path.join(images_dir, image_name + im_ext)
+            draw_predictions_on_image(
+                image_path=image_path,
+                results_file_path=txt_regress_path,
+                class_labels=class_labels,
+                class_names=class_names,
+                completed_output_path=completed_output_path,
+            )
+    # 分割任务
+    elif task == 'seg':
+        txt_regress_path_list = convert_coordinates_seg(
+            txt_label_path=txt_label_path,
+            output_file_dir=output_file_dir,
+            iou_threshold=iou_threshold,
+            confidence_threshold=confidence_threshold,
+            area_weight=area_weight,
+            slice_sep=slice_sep,
+            orgimg_dir=images_dir,
+        )
+        for txt_regress_path in txt_regress_path_list:
+            image_name = os.path.basename(txt_regress_path).split('.')[0]
+            image_path = os.path.join(images_dir, image_name + im_ext)
+            draw_segs_on_image(
+                image_path=image_path,
+                results_file_path=txt_regress_path,
+                class_labels=class_labels,
+                class_names=class_names,
+                completed_output_path=completed_output_path,
+            )
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -163,7 +194,7 @@ if __name__ == '__main__':
     parser.add_argument("--slice_sep", type=str, default="_")
     parser.add_argument("--overwrite", type=bool, default=False)
     parser.add_argument("--out_ext", type=str, default=".png")
-    parser.add_argument("--model", type=str, default="yoloFan.pt")
+    parser.add_argument("--model", type=str, default="yoloPanel.pt")
     parser.add_argument("--conf", type=float, default=0.25)
     parser.add_argument("--iou", type=float, default=0.7)
     parser.add_argument("--half", type=bool, default=False)
@@ -189,5 +220,6 @@ if __name__ == '__main__':
     parser.add_argument("--area_weight", type=float, default=5)
     parser.add_argument("--class_labels", type=int, nargs="+", default=[0])
     parser.add_argument("--class_names", type=str, nargs="+", default=["Fan"])
+    parser.add_argument("--task", type=str, default='seg', choices=['det', 'seg'])
     args = parser.parse_args()
     predict(**vars(args))

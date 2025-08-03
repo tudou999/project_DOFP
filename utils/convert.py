@@ -121,4 +121,64 @@ def convert_coordinates(
 def convert_coordinates_seg(
     txt_label_path, output_file_dir, iou_threshold, confidence_threshold, area_weight, slice_sep, orgimg_dir
 ):
-    pass
+    if not os.path.exists(output_file_dir):
+        os.makedirs(output_file_dir)
+        print(f"已创建文件夹 {output_file_dir}")
+    output_lines = dict()
+
+    for root, dirs, files in os.walk(txt_label_path):
+        for filename in files:
+            if filename.endswith(".txt"):
+                filepath = os.path.join(root, filename)
+                slice_info = filename.split(".")[0].split(slice_sep)
+                y0 = int(slice_info[-6])
+                x0 = int(slice_info[-5])
+                sliceHeight = int(slice_info[-4])
+                sliceWidth = int(slice_info[-3])
+                orgimg_w = int(slice_info[-2])
+                orgimg_h = int(slice_info[-1])
+
+                exclude_imgname_char = slice_sep + str(y0) + slice_sep + str(x0) + slice_sep + str(sliceHeight) + \
+                    slice_sep + str(sliceWidth) + slice_sep + str(orgimg_w) + slice_sep + str(orgimg_h)
+                exclude_imgname_index = filename.split(".")[0].index(exclude_imgname_char)
+                imgname = filename.split(".")[0][:exclude_imgname_index]
+
+                with open(filepath, "r") as f:
+                    lines = f.readlines()
+
+                converted_lines = []
+                for line in lines:
+                    parts = line.strip().split(" ")
+                    class_label = int(parts[0])
+                    conf = float(parts[1])
+                    coords = [float(x) for x in parts[2:]]
+                    # 坐标转换到原图
+                    converted_coords = []
+                    for i in range(0, len(coords), 2):
+                        x = coords[i] * sliceWidth + x0
+                        y = coords[i+1] * sliceHeight + y0
+                        converted_coords.extend([x, y])
+                    converted_line = [class_label, conf] + converted_coords
+                    converted_lines.append(converted_line)
+
+                if imgname not in output_lines:
+                    output_lines[imgname] = converted_lines
+                else:
+                    output_lines[imgname].extend(converted_lines)
+
+    outputs_file_path_list = []
+    for key, value in output_lines.items():
+        # 可选：对分割结果做NMS或合并处理
+        output_file_path = os.path.join(output_file_dir, f"{key}.txt")
+        if os.path.exists(output_file_path):
+            import logging
+            os.remove(output_file_path)
+            logging.warning(f"图片 {key} 的分割txt结果已存在，原内容将被覆盖！")
+
+        with open(output_file_path, "w") as f:
+            for line in value:
+                f.write(" ".join([str(line[0]), f"{line[1]:.2f}"] + [f"{x:.2f}" for x in line[2:]]) + "\n")
+        print(f"图片 {key} 的分割txt结果已保存至: {output_file_path}")
+        outputs_file_path_list.append(output_file_path)
+
+    return outputs_file_path_list
