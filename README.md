@@ -10,7 +10,7 @@
 conda create -n DOFP python=3.9 -y
 conda activate DOFP
 # 安装依赖
-pip install ultralytics rasterio scikit-image
+pip install ultralytics rasterio scikit-image shapely pyproj numpy
 ```
 
 ### gdal库配置
@@ -61,7 +61,7 @@ pip install ./GDAL-3.4.1-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl
 ## 命令行启动示例：
 
 ```bash
-python predict.py --images_dir ./images --im_ext .tif --model ./yoloFan.pt
+python predict.py --im_ext .tif --task det
 ```
 
 ---
@@ -85,8 +85,10 @@ python predict.py --images_dir ./images --im_ext .tif --model ./yoloFan.pt
 │   └── exp20250803_1504/
 │       ├── extracted_masks/    # 存储滑动窗口后的分割掩码
 │       ├── FINAL/              # 存储检测结果的大尺度图片
-│       │   ├── test_mask.tif        # 存储带分割掩码的 tif 文件
-│       │   ├── test_vis.tif         # 存储带分割结果可视化的 tif 文件
+│       │   ├── test_mask.tif       # 存储带分割掩码的 tif 文件
+│       │   ├── test.tif            # 存储带分割结果可视化的 tif 文件
+│       │   ├── test_mask.txt       # 存储分割数据的 txt 文件
+│       │   └── xxxxx.json          # 分割结果的面积预测文件
 │       ├── predict/            # 存储滑动窗口后的分割结果
 │       │   ├── labels/             # 存储分割结果的标签文件
 │       │   ├── image1              # 分割结果图片1

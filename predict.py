@@ -4,6 +4,7 @@ import argparse
 import datetime
 import numpy as np
 import cv2
+from ultralytics import YOLO
 
 # 设置项目根目录
 PROJECT_ROOT = os.path.abspath(os.path.join(os.getcwd(), "."))
@@ -15,9 +16,9 @@ from utils import slice_image
 # 预测用函数
 from utils import convert_coordinates, draw_predictions_on_image
 # 分割用函数
-from utils import convert_coordinates_seg, draw_segs_on_image
-
-from ultralytics import YOLO
+from utils import convert_coordinates_seg, draw_segs_on_image, convert_masks_to_txt
+# 面积计算函数
+from utils import calculate_area_from_txt
 
 def get_exp_dir(base_dir, task):
     now = datetime.datetime.now().strftime('%Y%m%d_%H%M')
@@ -60,6 +61,7 @@ def predict(
     class_labels=[0],
     class_names=["Fan",],
     task='det',
+    calculate_area=True,
 ):
     if task == 'det':
         model = "yoloFan.pt"
@@ -288,9 +290,7 @@ def predict(
             image_path = os.path.join(images_dir, img_name + im_ext)
 
             if os.path.exists(image_path):
-                output_img_path = os.path.join(
-                    completed_output_path, f"{img_name}_vis{im_ext}"
-                )
+                output_img_path = os.path.join(completed_output_path, f"{img_name}{im_ext}")
 
                 # 创建输出目录
                 os.makedirs(os.path.dirname(output_img_path), exist_ok=True)
@@ -303,12 +303,152 @@ def predict(
                         color=(0, 255, 0),  # 光伏板显示为绿色
                         alpha=0.3
                     )
-                    print(f"生成可视化: {img_name}_vis{im_ext}")
+                    print(f"生成可视化: {img_name}{im_ext}")
                 except Exception as e:
                     print(f"[ERROR] 可视化失败 {img_name}: {str(e)}")
             else:
                 print(f"[WARNING] 未找到原图: {image_path}")
 
+                # === 查找现有的分割轮廓点txt文件 ===
+        print("\n" + "=" * 50)
+        print("查找现有的分割轮廓点txt文件")
+        print("=" * 50)
+        
+        # 查找现有的txt文件
+        existing_txt_files = []
+        for root, _, files in os.walk(completed_output_path):
+            for file in files:
+                if file.endswith('.txt'):
+                    existing_txt_files.append(os.path.join(root, file))
+        
+        if existing_txt_files:
+            print(f"[SUCCESS] 找到 {len(existing_txt_files)} 个现有的txt文件")
+            for txt_file in existing_txt_files:
+                print(f"  - {os.path.basename(txt_file)}")
+            txt_files = existing_txt_files
+        else:
+            print("[INFO] 未找到现有的txt文件，将生成新的txt文件")
+            
+            # 创建txt输出目录
+            os.makedirs(completed_output_path, exist_ok=True)
+            
+            # 转换掩码为txt格式
+            txt_files = convert_masks_to_txt(
+                mask_files=mask_outputs,
+                output_dir=completed_output_path,
+                class_id=0  # 光伏板类别ID
+            )
+            
+            print(f"[SUCCESS] 成功生成 {len(txt_files)} 个分割轮廓点txt文件")
+            print(f"[INFO] 分割轮廓点txt文件保存在: {completed_output_path}")
+            print(f"[INFO] 格式: class_id x1 y1 x2 y2 x3 y3 ... (归一化坐标)")
+        
+        # === 计算光伏板面积 ===
+        if calculate_area:
+            print("\n" + "=" * 50)
+            print("开始计算光伏板面积")
+            print("=" * 50)
+
+            # 查找txt文件
+            txt_file = None
+            for root, _, files in os.walk(completed_output_path):
+                for file in files:
+                    if file.endswith('.txt'):
+                        txt_file = os.path.join(root, file)
+                        break
+                if txt_file:
+                    break
+            
+            if txt_file:
+                print(f"[INFO] 找到txt文件: {os.path.basename(txt_file)}")
+                
+                # 查找对应的tif文件
+                txt_basename = os.path.splitext(os.path.basename(txt_file))[0]
+                # 移除可能的"_mask"后缀
+                if txt_basename.endswith('_mask'):
+                    txt_basename = txt_basename[:-5]  # 移除"_mask"
+                
+                tif_file = os.path.join(images_dir, txt_basename + im_ext)
+                
+                if os.path.exists(tif_file):
+                    print(f"[INFO] 找到对应的tif文件: {os.path.basename(tif_file)}")
+                    
+                    try:
+                        # 计算单个文件的面积
+                        results = calculate_area_from_txt(tif_file, txt_file)
+                        
+                        if results:
+                            # 计算总面积
+                            total_area = sum(r["area_sq_m"] for r in results.values())
+                            
+                            print(f"\n[SUCCESS] 面积计算完成")
+                            print(f"[INFO] 检测到 {len(results)} 个光伏板区域")
+                            print(f"[INFO] 总面积: {total_area:.2f} 平方米")
+                            print(f"[INFO] 总面积: {total_area/10000:.4f} 公顷")
+                            print(f"[INFO] 总面积: {total_area/1000000:.6f} 平方公里")
+                            
+                            # 保存结果到JSON文件
+                            area_results_file = os.path.join(completed_output_path, "area_calculation_results.json")
+                            import json
+                            results["total_area"] = {
+                                "square_meters": total_area,
+                                "hectares": total_area / 10000,
+                                "square_kilometers": total_area / 1000000
+                            }
+                            with open(area_results_file, 'w', encoding='utf-8') as f:
+                                json.dump(results, f, indent=2, ensure_ascii=False)
+                            
+                            print(f"[INFO] 详细结果已保存到: {area_results_file}")
+                            
+                            # 在图像上绘制总面积
+                            output_img_path = os.path.join(completed_output_path, f"{txt_basename}{im_ext}")
+                            if os.path.exists(output_img_path):
+                                # 找到对应的mask文件
+                                mask_file = None
+                                for root, _, files in os.walk(completed_output_path):
+                                    for file in files:
+                                        if file.endswith('_mask.tif') and txt_basename in file:
+                                            mask_file = os.path.join(root, file)
+                                            break
+                                    if mask_file:
+                                        break
+                                 
+                                if mask_file and os.path.exists(mask_file):
+                                    print(f"[INFO] 在图像上绘制总面积: {output_img_path}")
+                                    draw_segs_on_image(
+                                        image_path=tif_file,
+                                        mask_path=mask_file,
+                                        output_path=output_img_path,
+                                        color=(0, 255, 0),  # 光伏板显示为绿色
+                                        alpha=0.3,
+                                        total_area=total_area  # 传递总面积
+                                    )
+                                else:
+                                    print(f"[WARNING] 未找到对应的mask文件，无法绘制总面积")
+                            else:
+                                print(f"[WARNING] 未找到可视化图像文件: {output_img_path}")
+                            
+                            # 显示每个轮廓的详细信息
+                            print(f"\n[DETAIL] 各轮廓面积详情:")
+                            for contour_name, contour_data in results.items():
+                                if "area_sq_m" in contour_data:
+                                    print(f"  {contour_name}: {contour_data['area_sq_m']:.2f} 平方米 "
+                                          f"({contour_data['area_hectares']:.4f} 公顷)")
+                        else:
+                            print("[ERROR] 面积计算失败，未获得有效结果")
+
+                    except Exception as e:
+                        print(f"[ERROR] 面积计算失败: {str(e)}")
+                        print("[INFO] 请检查TIFF图像是否包含地理信息（GeoTIFF格式）")
+                else:
+                    print(f"[ERROR] 未找到对应的tif文件: {tif_file}")
+                    print(f"[INFO] 请确保tif文件存在于: {images_dir}")
+            else:
+                print("[ERROR] 未找到txt文件")
+                print(f"[INFO] 请确保txt文件存在于: {completed_output_path}")
+        else:
+            print("\n[INFO] 跳过面积计算（可通过 --calculate_area True 启用）")
+        
         print("===== 光伏板分割任务完成 =====")
 
 if __name__ == '__main__':
@@ -348,5 +488,6 @@ if __name__ == '__main__':
     parser.add_argument("--class_labels", type=int, nargs="+", default=[0])
     parser.add_argument("--class_names", type=str, nargs="+", default=["Fan"])
     parser.add_argument("--task", type=str, default='seg', choices=['det', 'seg'])
+    parser.add_argument("--calculate_area", type=bool, default=True)
     args = parser.parse_args()
     predict(**vars(args))

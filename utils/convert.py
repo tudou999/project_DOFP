@@ -121,71 +121,6 @@ def convert_coordinates(
 
     return outputs_file_path_list
 
-# def convert_coordinates_seg(
-#     txt_label_path, output_file_dir, iou_threshold, confidence_threshold, area_weight, slice_sep, orgimg_dir
-# ):
-#     if not os.path.exists(output_file_dir):
-#         os.makedirs(output_file_dir)
-#         print(f"已创建文件夹 {output_file_dir}")
-#     output_lines = dict()
-#
-#     for root, dirs, files in os.walk(txt_label_path):
-#         for filename in files:
-#             if filename.endswith(".txt"):
-#                 filepath = os.path.join(root, filename)
-#                 slice_info = filename.split(".")[0].split(slice_sep)
-#                 y0 = int(slice_info[-6])
-#                 x0 = int(slice_info[-5])
-#                 sliceHeight = int(slice_info[-4])
-#                 sliceWidth = int(slice_info[-3])
-#                 orgimg_w = int(slice_info[-2])
-#                 orgimg_h = int(slice_info[-1])
-#
-#                 exclude_imgname_char = slice_sep + str(y0) + slice_sep + str(x0) + slice_sep + str(sliceHeight) + \
-#                     slice_sep + str(sliceWidth) + slice_sep + str(orgimg_w) + slice_sep + str(orgimg_h)
-#                 exclude_imgname_index = filename.split(".")[0].index(exclude_imgname_char)
-#                 imgname = filename.split(".")[0][:exclude_imgname_index]
-#
-#                 with open(filepath, "r") as f:
-#                     lines = f.readlines()
-#
-#                 converted_lines = []
-#                 for line in lines:
-#                     parts = line.strip().split(" ")
-#                     class_label = int(parts[0])
-#                     coords = [float(x) for x in parts[1:-1]]
-#                     conf = float(parts[-1])
-#                     # 坐标转换到原图
-#                     converted_coords = []
-#                     for i in range(0, len(coords), 2):
-#                         x = coords[i] * sliceWidth + x0
-#                         y = coords[i+1] * sliceHeight + y0
-#                         converted_coords.extend([x, y])
-#                     converted_line = [class_label] + converted_coords + [conf]
-#                     converted_lines.append(converted_line)
-#
-#                 if imgname not in output_lines:
-#                     output_lines[imgname] = converted_lines
-#                 else:
-#                     output_lines[imgname].extend(converted_lines)
-#
-#     outputs_file_path_list = []
-#     for key, value in output_lines.items():
-#         output_file_path = os.path.join(output_file_dir, f"{key}.txt")
-#         if os.path.exists(output_file_path):
-#             import logging
-#             os.remove(output_file_path)
-#             logging.warning(f"图片 {key} 的分割txt结果已存在，原内容将被覆盖！")
-#
-#         with open(output_file_path, "w") as f:
-#             for line in value:
-#                 f.write(" ".join([str(line[0])] + [f"{x:.6f}" for x in line[1:-1]] + [f"{line[-1]:.6f}"]) + "\n")
-#         print(f"图片 {key} 的分割txt结果已保存至: {output_file_path}")
-#         outputs_file_path_list.append(output_file_path)
-#
-#     return outputs_file_path_list
-
-
 def convert_coordinates_seg(
         mask_files,
         output_dir,
@@ -408,3 +343,98 @@ def convert_coordinates_seg(
             print(f"保存掩码失败: {output_path} - {e}")
 
     return output_files
+
+def mask_to_txt(mask_path, output_txt_path, class_id=0):
+    """
+    将掩码文件转换为txt格式（分割轮廓点）
+    
+    Args:
+        mask_path: 掩码文件路径 (.tif, .png等)
+        output_txt_path: 输出的txt文件路径
+        class_id: 类别ID，默认为0
+    """
+    try:
+        # 读取掩码文件
+        if mask_path.endswith('.tif') or mask_path.endswith('.tiff'):
+            # 使用rasterio读取地理信息文件
+            with rasterio.open(mask_path) as src:
+                mask = src.read(1)  # 读取第一个波段
+        else:
+            # 使用OpenCV读取其他格式
+            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        
+        if mask is None:
+            print(f"[ERROR] 无法读取掩码文件: {mask_path}")
+            return False
+            
+        # 二值化处理
+        _, binary_mask = cv2.threshold(mask, 1, 255, cv2.THRESH_BINARY)
+        
+        # 查找轮廓
+        contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # 创建输出目录
+        os.makedirs(os.path.dirname(output_txt_path), exist_ok=True)
+        
+        # 获取图像尺寸用于归一化
+        img_height, img_width = mask.shape
+        
+        # 写入txt文件
+        with open(output_txt_path, 'w') as f:
+            for contour in contours:
+                # 简化轮廓点（减少点的数量）
+                epsilon = 0.001 * cv2.arcLength(contour, True)
+                approx_contour = cv2.approxPolyDP(contour, epsilon, True)
+                
+                # 提取轮廓点坐标
+                points = []
+                for point in approx_contour:
+                    x, y = point[0]
+                    # 归一化坐标到[0,1]范围
+                    x_norm = x / img_width
+                    y_norm = y / img_height
+                    points.extend([x_norm, y_norm])
+                
+                # 写入分割格式：class_id x1 y1 x2 y2 x3 y3 ...
+                if len(points) >= 6:  # 至少需要3个点（6个坐标值）
+                    line = f"{class_id} " + " ".join([f"{p:.6f}" for p in points])
+                    f.write(line + "\n")
+        
+        print(f"[SUCCESS] 掩码已转换为分割txt格式: {output_txt_path}")
+        print(f"[INFO] 找到 {len(contours)} 个轮廓")
+        return True
+        
+    except Exception as e:
+        print(f"[ERROR] 掩码转txt失败: {str(e)}")
+        return False
+
+
+def convert_masks_to_txt(mask_files, output_dir, class_id=0):
+    """
+    批量将掩码文件转换为txt格式
+    
+    Args:
+        mask_files: 掩码文件路径列表
+        output_dir: 输出目录
+        class_id: 类别ID，默认为0
+    
+    Returns:
+        list: 成功转换的txt文件路径列表
+    """
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    converted_files = []
+    
+    for mask_path in mask_files:
+        # 生成对应的txt文件名
+        mask_name = os.path.basename(mask_path)
+        txt_name = os.path.splitext(mask_name)[0] + '.txt'
+        txt_path = os.path.join(output_dir, txt_name)
+        
+        # 转换掩码为txt
+        if mask_to_txt(mask_path, txt_path, class_id):
+            converted_files.append(txt_path)
+    
+    print(f"[SUCCESS] 成功转换 {len(converted_files)} 个掩码文件为txt格式")
+    return converted_files

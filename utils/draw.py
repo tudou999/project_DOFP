@@ -123,91 +123,13 @@ def draw_predictions_on_image(
 
     print(f"图片 {filename} 的预测可视化结果已保存至: {output_image_path}")
 
-# def draw_segs_on_image(
-#     image_path, results_file_path, class_labels, class_names, completed_output_path
-# ):
-#     assert len(class_labels) == len(class_names), "类别标签数量应与类别名称数量一致。"
-#
-#     # 定义类别颜色
-#     colors = [
-#         (255, 0, 0),  # head: 红色
-#         (0, 255, 0),  # 其他类别可扩展
-#         (0, 0, 255),
-#         (255, 255, 0),
-#     ]
-#     label_map = dict(zip(class_labels, class_names))
-#     color_map = dict(zip(class_labels, colors))
-#
-#     image = cv2.imread(image_path)
-#     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-#
-#     with open(results_file_path, 'r') as file:
-#         lines = file.readlines()
-#
-#     for line in lines:
-#         parts = line.strip().split(' ')
-#         class_label = int(parts[0])
-#         conf = float(parts[1])
-#         coords = [float(x) for x in parts[2:]]
-#
-#         image_height, image_width, _ = image.shape
-#         # 分割点坐标转换为绝对像素
-#         points = []
-#         for i in range(0, len(coords), 2):
-#             x = round(coords[i] * image_width) if coords[i] <= 1.0 else round(coords[i])
-#             y = round(coords[i+1] * image_height) if coords[i+1] <= 1.0 else round(coords[i+1])
-#             points.append([x, y])
-#         points_np = np.array([points], dtype=np.int32)
-#
-#         color = color_map.get(class_label, (0, 255, 0))
-#         class_name = label_map.get(class_label, "Unknown")
-#
-#         # 绘制分割轮廓
-#         cv2.polylines(image, points_np, isClosed=True, color=color, thickness=2)
-#         # 可选：填充分割区域
-#         cv2.fillPoly(image, points_np, color=(color[0], color[1], color[2], 80))
-#
-#         # 标注类别和置信度
-#         x0, y0 = points[0]
-#         cv2.putText(
-#             image,
-#             f"{class_name}: {conf:.2f}",
-#             (x0, y0 - 5),
-#             cv2.FONT_HERSHEY_SIMPLEX,
-#             0.5,
-#             color,
-#             2,
-#         )
-#
-#     filename = os.path.basename(image_path)
-#     if not os.path.exists(completed_output_path):
-#         os.makedirs(completed_output_path)
-#     output_image_path = os.path.join(completed_output_path, filename)
-#     if os.path.exists(output_image_path):
-#         import logging
-#         os.remove(output_image_path)
-#         logging.warning(f"图片 {filename} 的分割可视化结果已存在，原内容将被覆盖！")
-#
-#     with rasterio.open(image_path) as src:
-#         profile = src.profile
-#
-#     image_to_save = image.transpose(2, 0, 1)
-#     profile.update({
-#         "count": 3,
-#         "dtype": image_to_save.dtype
-#     })
-#
-#     with rasterio.open(output_image_path, 'w', **profile) as dst:
-#         dst.write(image_to_save)
-#
-#     print(f"图片 {filename} 的分割可视化结果已保存至: {output_image_path}")
-
 def draw_segs_on_image(
         image_path,
         mask_path,
         output_path,
         color=(0, 255, 0),  # 光伏板显示为绿色
-        alpha=0.3  # 掩码透明度
+        alpha=0.3,  # 掩码透明度
+        total_area=None  # 总面积参数
 ):
     """
     在原图上绘制分割结果
@@ -235,6 +157,48 @@ def draw_segs_on_image(
 
     # 融合原图和掩码
     blended = cv2.addWeighted(image_rgb, 1 - alpha, color_mask, alpha, 0)
+
+    # 如果提供了总面积，则在右上角绘制
+    if total_area is not None:
+        # 图像尺寸
+        height, width = blended.shape[:2]
+        
+        # 文本内容
+        area_text = f"{total_area:.2f} m*m"  # 假设面积单位为平方米
+        
+        # 字体设置
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.8
+        font_thickness = 2
+        text_color = (255, 255, 255)  # 白色
+        bg_color = (0, 0, 0)  # 黑色背景
+        
+        # 获取文本大小
+        text_size = cv2.getTextSize(area_text, font, font_scale, font_thickness)[0]
+        
+        # 文本位置（右上角）
+        text_x = width - text_size[0] - 10
+        text_y = text_size[1] + 10
+        
+        # 绘制黑色背景矩形
+        cv2.rectangle(
+            blended, 
+            (text_x - 5, text_y - text_size[1] - 5), 
+            (text_x + text_size[0] + 5, text_y + 5), 
+            bg_color, 
+            -1
+        )
+        
+        # 绘制文本
+        cv2.putText(
+            blended, 
+            area_text, 
+            (text_x, text_y), 
+            font, 
+            font_scale, 
+            text_color, 
+            font_thickness
+        )
 
     # 保存结果（保持TIFF地理信息）
     with rasterio.open(output_path, 'w', **profile) as dst:
