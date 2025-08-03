@@ -5,8 +5,8 @@ import time
 def slice_image(
     image_path,
     out_dir_all_images,
-    sliceHeight=416,
-    sliceWidth=416,
+    sliceHeight=640,
+    sliceWidth=640,
     overlap=0.1,
     slice_sep="_",
     overwrite=False,

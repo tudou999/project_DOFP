@@ -6,6 +6,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.getcwd(), "."))
 sys.path.append(PROJECT_ROOT)
 sys.path.append(os.path.join(PROJECT_ROOT, "utils"))
 
+from skimage.measure import label, regionprops
+
 def calculate_area(box):
     """
     计算边界框的面积
@@ -165,3 +167,101 @@ def apply_nms(
             nms_out_line += "\n"
             nms_out_lines.append(nms_out_line)
         return nms_out_lines
+
+
+def apply_mask_nms(
+        mask,
+        iou_threshold=0.5,
+        confidence_threshold=0.25,
+        area_weight=1.0
+):
+    """
+    对掩码应用NMS处理：
+    1. 标记连通区域
+    2. 根据置信度和面积过滤
+    3. 基于掩码IoU进行非极大值抑制
+    4. 优化小区域处理
+    """
+    # 预处理：确保掩码是二值的
+    binary_mask = (mask > 0).astype(np.uint8)
+
+    # 标记连通区域
+    labeled_mask = label(binary_mask)
+    regions = regionprops(labeled_mask)
+
+    # 提取区域属性
+    boxes = []
+    masks = []
+    scores = []
+    areas = []
+
+    print(f"[INFO] 找到 {len(regions)} 个连通区域")
+
+    for region in regions:
+        minr, minc, maxr, maxc = region.bbox
+        bbox = [minc, minr, maxc, maxr]  # xmin, ymin, xmax, ymax
+        region_mask = (labeled_mask == region.label)
+
+        # 计算区域面积
+        area = region.area
+
+        # 使用区域面积作为置信度代理，但考虑面积权重
+        conf = (area / mask.size) * area_weight
+
+        # 过滤太小的区域
+        min_area = mask.size * 0.0001  # 最小面积阈值
+        if area < min_area:
+            print(f"[INFO] 过滤小区域: 面积={area}, 阈值={min_area}")
+            continue
+
+        if conf < confidence_threshold:
+            print(f"[INFO] 过滤低置信度区域: conf={conf:.4f}, 阈值={confidence_threshold}")
+            continue
+
+        boxes.append(bbox)
+        masks.append(region_mask)
+        scores.append(conf)
+        areas.append(area)
+        print(f"[INFO] 保留区域: 面积={area}, 置信度={conf:.4f}")
+
+    if not boxes:
+        print("[INFO] 没有符合条件的区域，返回空掩码")
+        return np.zeros_like(mask, dtype=np.uint8)
+
+    print(f"[INFO] 开始NMS处理 {len(boxes)} 个区域...")
+
+    # 按置信度排序
+    sorted_indices = np.argsort(scores)[::-1]
+
+    # NMS处理
+    keep = []
+    while sorted_indices.size > 0:
+        i = sorted_indices[0]
+        keep.append(i)
+
+        if sorted_indices.size == 1:
+            break
+
+        # 计算当前掩码与其他掩码的IoU
+        current_mask = masks[i]
+        ious = []
+        for j in sorted_indices[1:]:
+            other_mask = masks[j]
+            intersection = np.logical_and(current_mask, other_mask).sum()
+            union = np.logical_or(current_mask, other_mask).sum()
+            iou = intersection / (union + 1e-7)
+            ious.append(iou)
+
+        # 保留IoU低于阈值的索引
+        ious = np.array(ious)
+        low_iou_indices = np.where(ious <= iou_threshold)[0]
+        sorted_indices = sorted_indices[1:][low_iou_indices]
+
+    print(f"[INFO] NMS后保留 {len(keep)} 个区域")
+
+    # 创建最终掩码
+    final_mask = np.zeros_like(mask, dtype=np.uint8)
+    for idx in keep:
+        final_mask[masks[idx]] = 255  # 使用255而不是1，便于可视化
+
+    return final_mask

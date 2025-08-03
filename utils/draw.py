@@ -123,81 +123,125 @@ def draw_predictions_on_image(
 
     print(f"图片 {filename} 的预测可视化结果已保存至: {output_image_path}")
 
+# def draw_segs_on_image(
+#     image_path, results_file_path, class_labels, class_names, completed_output_path
+# ):
+#     assert len(class_labels) == len(class_names), "类别标签数量应与类别名称数量一致。"
+#
+#     # 定义类别颜色
+#     colors = [
+#         (255, 0, 0),  # head: 红色
+#         (0, 255, 0),  # 其他类别可扩展
+#         (0, 0, 255),
+#         (255, 255, 0),
+#     ]
+#     label_map = dict(zip(class_labels, class_names))
+#     color_map = dict(zip(class_labels, colors))
+#
+#     image = cv2.imread(image_path)
+#     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+#
+#     with open(results_file_path, 'r') as file:
+#         lines = file.readlines()
+#
+#     for line in lines:
+#         parts = line.strip().split(' ')
+#         class_label = int(parts[0])
+#         conf = float(parts[1])
+#         coords = [float(x) for x in parts[2:]]
+#
+#         image_height, image_width, _ = image.shape
+#         # 分割点坐标转换为绝对像素
+#         points = []
+#         for i in range(0, len(coords), 2):
+#             x = round(coords[i] * image_width) if coords[i] <= 1.0 else round(coords[i])
+#             y = round(coords[i+1] * image_height) if coords[i+1] <= 1.0 else round(coords[i+1])
+#             points.append([x, y])
+#         points_np = np.array([points], dtype=np.int32)
+#
+#         color = color_map.get(class_label, (0, 255, 0))
+#         class_name = label_map.get(class_label, "Unknown")
+#
+#         # 绘制分割轮廓
+#         cv2.polylines(image, points_np, isClosed=True, color=color, thickness=2)
+#         # 可选：填充分割区域
+#         cv2.fillPoly(image, points_np, color=(color[0], color[1], color[2], 80))
+#
+#         # 标注类别和置信度
+#         x0, y0 = points[0]
+#         cv2.putText(
+#             image,
+#             f"{class_name}: {conf:.2f}",
+#             (x0, y0 - 5),
+#             cv2.FONT_HERSHEY_SIMPLEX,
+#             0.5,
+#             color,
+#             2,
+#         )
+#
+#     filename = os.path.basename(image_path)
+#     if not os.path.exists(completed_output_path):
+#         os.makedirs(completed_output_path)
+#     output_image_path = os.path.join(completed_output_path, filename)
+#     if os.path.exists(output_image_path):
+#         import logging
+#         os.remove(output_image_path)
+#         logging.warning(f"图片 {filename} 的分割可视化结果已存在，原内容将被覆盖！")
+#
+#     with rasterio.open(image_path) as src:
+#         profile = src.profile
+#
+#     image_to_save = image.transpose(2, 0, 1)
+#     profile.update({
+#         "count": 3,
+#         "dtype": image_to_save.dtype
+#     })
+#
+#     with rasterio.open(output_image_path, 'w', **profile) as dst:
+#         dst.write(image_to_save)
+#
+#     print(f"图片 {filename} 的分割可视化结果已保存至: {output_image_path}")
+
 def draw_segs_on_image(
-    image_path, results_file_path, class_labels, class_names, completed_output_path
+        image_path,
+        mask_path,
+        output_path,
+        color=(0, 255, 0),  # 光伏板显示为绿色
+        alpha=0.3  # 掩码透明度
 ):
-    assert len(class_labels) == len(class_names), "类别标签数量应与类别名称数量一致。"
-
-    # 定义类别颜色
-    colors = [
-        (255, 0, 0),  # head: 红色
-        (0, 255, 0),  # 其他类别可扩展
-        (0, 0, 255),
-        (255, 255, 0),
-    ]
-    label_map = dict(zip(class_labels, class_names))
-    color_map = dict(zip(class_labels, colors))
-
-    image = cv2.imread(image_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    with open(results_file_path, 'r') as file:
-        lines = file.readlines()
-
-    for line in lines:
-        parts = line.strip().split(' ')
-        class_label = int(parts[0])
-        conf = float(parts[1])
-        coords = [float(x) for x in parts[2:]]
-
-        image_height, image_width, _ = image.shape
-        # 分割点坐标转换为绝对像素
-        points = []
-        for i in range(0, len(coords), 2):
-            x = round(coords[i] * image_width) if coords[i] <= 1.0 else round(coords[i])
-            y = round(coords[i+1] * image_height) if coords[i+1] <= 1.0 else round(coords[i+1])
-            points.append([x, y])
-        points_np = np.array([points], dtype=np.int32)
-
-        color = color_map.get(class_label, (0, 255, 0))
-        class_name = label_map.get(class_label, "Unknown")
-
-        # 绘制分割轮廓
-        cv2.polylines(image, points_np, isClosed=True, color=color, thickness=2)
-        # 可选：填充分割区域
-        cv2.fillPoly(image, points_np, color=(color[0], color[1], color[2], 80))
-
-        # 标注类别和置信度
-        x0, y0 = points[0]
-        cv2.putText(
-            image,
-            f"{class_name}: {conf:.2f}",
-            (x0, y0 - 5),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            color,
-            2,
-        )
-
-    filename = os.path.basename(image_path)
-    if not os.path.exists(completed_output_path):
-        os.makedirs(completed_output_path)
-    output_image_path = os.path.join(completed_output_path, filename)
-    if os.path.exists(output_image_path):
-        import logging
-        os.remove(output_image_path)
-        logging.warning(f"图片 {filename} 的分割可视化结果已存在，原内容将被覆盖！")
-
+    """
+    在原图上绘制分割结果
+    """
+    # 加载原始图像
     with rasterio.open(image_path) as src:
+        image = src.read()
         profile = src.profile
 
-    image_to_save = image.transpose(2, 0, 1)
-    profile.update({
-        "count": 3,
-        "dtype": image_to_save.dtype
-    })
+        # 转换到 (H, W, C) 格式
+        if image.shape[0] == 1:  # 单波段
+            image_rgb = np.stack([image[0]] * 3, axis=-1)
+        elif image.shape[0] == 3:  # RGB
+            image_rgb = image.transpose(1, 2, 0)
+        else:  # 多波段，取前三个
+            image_rgb = image[:3].transpose(1, 2, 0)
 
-    with rasterio.open(output_image_path, 'w', **profile) as dst:
-        dst.write(image_to_save)
+    # 加载分割掩码
+    with rasterio.open(mask_path) as src:
+        mask = src.read(1)
 
-    print(f"图片 {filename} 的分割可视化结果已保存至: {output_image_path}")
+    # 创建彩色掩码
+    color_mask = np.zeros((*mask.shape, 3), dtype=np.uint8)
+    color_mask[mask > 0] = color
+
+    # 融合原图和掩码
+    blended = cv2.addWeighted(image_rgb, 1 - alpha, color_mask, alpha, 0)
+
+    # 保存结果（保持TIFF地理信息）
+    with rasterio.open(output_path, 'w', **profile) as dst:
+        # 转换回 (C, H, W) 格式
+        if blended.ndim == 3 and blended.shape[2] == 3:
+            blended = blended.transpose(2, 0, 1)
+
+        dst.write(blended)
+
+    print(f"可视化结果已保存至: {output_path}")
