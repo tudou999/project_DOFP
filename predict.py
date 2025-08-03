@@ -139,7 +139,7 @@ def predict(
 
     os.system(predict_shell)
 
-    txt_label_path = os.path.join(yolov8_predict_results_path, 'labels')
+    txt_label_path = os.path.join(yolov8_predict_results_path, 'predict', 'labels')
 
     # 检测任务
     if task == 'det':
@@ -188,8 +188,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--images_dir", type=str, default=os.path.join(PROJECT_ROOT, 'images'))
     parser.add_argument("--im_ext", type=str, default=".tif")
-    parser.add_argument("--sliceHeight", type=int, default=1088)
-    parser.add_argument("--sliceWidth", type=int, default=1088)
+    parser.add_argument("--sliceHeight", type=int, default=640)
+    parser.add_argument("--sliceWidth", type=int, default=640)
     parser.add_argument("--overlap", type=float, default=0.5)
     parser.add_argument("--slice_sep", type=str, default="_")
     parser.add_argument("--overwrite", type=bool, default=False)

@@ -177,7 +177,7 @@ def convert_coordinates_seg(
 
         with open(output_file_path, "w") as f:
             for line in value:
-                f.write(" ".join([str(line[0]), f"{line[1]:.2f}"] + [f"{x:.2f}" for x in line[2:]]) + "\n")
+                f.write(" ".join([str(line[0]), f"{line[1]:.6f}"] + [f"{x:.6f}" for x in line[2:]]) + "\n")
         print(f"图片 {key} 的分割txt结果已保存至: {output_file_path}")
         outputs_file_path_list.append(output_file_path)
 
